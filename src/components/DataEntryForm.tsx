@@ -39,7 +39,6 @@ const DataEntryForm = () => {
   
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isTargetSectionOpen, setIsTargetSectionOpen] = useState(true);
-  const [monthlyTarget, setMonthlyTarget] = useState("2000000");
   const [isLoading, setIsLoading] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<string>("");
 
@@ -177,7 +176,9 @@ const DataEntryForm = () => {
     }
   };
 
-  const totalTargetPerDay = Math.round(parseInt(monthlyTarget) / new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate());
+  // Calculate total targets across all departments
+  const totalMonthlyTarget = productionItems.reduce((sum, item) => sum + item.monthlyTarget, 0);
+  const totalTargetPerDay = Math.round(totalMonthlyTarget / new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate());
 
   return (
     <div className="min-h-screen bg-background">
@@ -246,14 +247,13 @@ const DataEntryForm = () => {
                 <CardContent className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="monthly-target">Monthly Target</Label>
+                      <Label>Total Monthly Target</Label>
                       <div className="relative">
                         <Input
-                          id="monthly-target"
                           type="number"
-                          value={monthlyTarget}
-                          onChange={(e) => setMonthlyTarget(e.target.value)}
-                          className="pr-16"
+                          value={totalMonthlyTarget}
+                          readOnly
+                          className="pr-16 bg-muted/30"
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                           Meter
@@ -261,7 +261,7 @@ const DataEntryForm = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Target per Day</Label>
+                      <Label>Total Target per Day</Label>
                       <div className="relative">
                         <Input
                           type="number"
@@ -275,8 +275,30 @@ const DataEntryForm = () => {
                       </div>
                     </div>
                   </div>
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Individual Department Targets</Label>
+                    <div className="grid gap-2">
+                      {productionItems.map((item) => {
+                        const daysInMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate();
+                        const targetPerDay = Math.round(item.monthlyTarget / daysInMonth);
+                        return (
+                          <div key={item.id} className="flex items-center justify-between p-2 bg-muted/20 rounded border">
+                            <span className="text-sm font-medium">{item.name}</span>
+                            <div className="flex items-center space-x-4 text-sm">
+                              <span className="text-muted-foreground">
+                                Monthly: {item.monthlyTarget.toLocaleString()}
+                              </span>
+                              <span className="text-muted-foreground">
+                                Daily: {targetPerDay.toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                   <p className="text-xs text-muted-foreground italic">
-                    * Usually pre-filled from previous entries
+                    * Individual targets can be modified in the data entry section below
                   </p>
                 </CardContent>
               </CollapsibleContent>
@@ -309,7 +331,24 @@ const DataEntryForm = () => {
                       </div>
 
                       {/* Input Fields Row */}
-                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <div className="space-y-2">
+                          <Label htmlFor={`monthly-target-${item.id}`}>Monthly Target</Label>
+                          <div className="relative">
+                            <Input
+                              id={`monthly-target-${item.id}`}
+                              type="number"
+                              placeholder="0"
+                              value={item.monthlyTarget}
+                              onChange={(e) => updateItem(item.id, 'monthlyTarget', parseFloat(e.target.value) || 0)}
+                              className="pr-16"
+                              required
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                              Meter
+                            </span>
+                          </div>
+                        </div>
                         <div className="space-y-2">
                           <Label htmlFor={`ftd-${item.id}`}>FTD (Figure to Date)</Label>
                           <div className="relative">
