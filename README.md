@@ -11,12 +11,13 @@ if you want a VS code environment online :
 wait until files load, open terminal and build using terminal (run both commands one after another) -
 
 npm run build
+
 npm run preview
 
 if you want to run locally, before these two commands type/copy paste -
 npm install
 
-after that you can run the two commands given above]
+after that you can run the two commands given above]###
 
 
 ## How can I edit this code?
