@@ -4,6 +4,21 @@
 
 **URL**: https://lovable.dev/projects/4a1b05ba-a43a-44c6-8f43-e16b0dc8a1f4
 
+### [ The above link redirects you to display project using 'Lovable',
+if you want a VS code environment online : 
+**URL**: https://symmetrical-space-acorn-r4gwp7pg745vhx995.github.dev
+
+wait until files load, open terminal and build using terminal (run both commands one after another) -
+
+npm run build
+npm run preview
+
+if you want to run locally, before these two commands type/copy paste -
+npm install
+
+after that you can run the two commands given above]
+
+
 ## How can I edit this code?
 
 There are several ways of editing your application.
