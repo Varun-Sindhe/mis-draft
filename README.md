@@ -17,7 +17,7 @@ npm run preview
 if you want to run locally, before these two commands type/copy paste -
 npm install
 
-after that you can run the two commands given above]###
+after that you can run the two commands given above]
 
 
 ## How can I edit this code?
