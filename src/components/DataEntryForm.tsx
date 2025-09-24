@@ -38,9 +38,10 @@ const DataEntryForm = () => {
   const { toast } = useToast();
   
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [isTargetSectionOpen, setIsTargetSectionOpen] = useState(true);
+  const [isTargetSectionOpen, setIsTargetSectionOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<string>("");
+  const [openMetrics, setOpenMetrics] = useState<Record<string, boolean>>({});
 
   // Sample data with realistic previous MTD values
   const [productionItems, setProductionItems] = useState<ProductionItem[]>([
@@ -86,13 +87,43 @@ const DataEntryForm = () => {
     },
   ]);
 
+  // Load saved monthly targets for 2025 from localStorage and apply by month
+  const applySavedTargetsForMonth = useCallback((date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1) as "7" | "8" | "9" | "10" | string;
+    const key = `monthlyTargets:${year}`;
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const saved: Record<string, Partial<Record<string, number>>> = JSON.parse(raw);
+      setProductionItems(prev => prev.map(item => {
+        const savedForDept = saved[item.id]?.[month];
+        if (typeof savedForDept === 'number' && savedForDept > 0) {
+          return { ...item, monthlyTarget: savedForDept };
+        }
+        return item;
+      }));
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
   // Parse date from URL params
   useEffect(() => {
     const dateParam = searchParams.get('date');
     if (dateParam) {
-      setSelectedDate(new Date(dateParam));
+      const d = new Date(dateParam);
+      setSelectedDate(d);
+      applySavedTargetsForMonth(d);
     }
-  }, [searchParams]);
+  }, [searchParams, applySavedTargetsForMonth]);
+
+  // When date changes via UI later, ensure targets refresh
+  useEffect(() => {
+    if (selectedDate) {
+      applySavedTargetsForMonth(selectedDate);
+    }
+  }, [selectedDate, applySavedTargetsForMonth]);
 
   // Calculate metrics for each item
   const calculateMetrics = useCallback((item: ProductionItem) => {
@@ -176,9 +207,7 @@ const DataEntryForm = () => {
     }
   };
 
-  // Calculate total targets across all departments
-  const totalMonthlyTarget = productionItems.reduce((sum, item) => sum + item.monthlyTarget, 0);
-  const totalTargetPerDay = Math.round(totalMonthlyTarget / new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate());
+  // Targets are managed per-department and per-month via Edit page
 
   return (
     <div className="min-h-screen bg-background">
@@ -230,7 +259,7 @@ const DataEntryForm = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Target className="h-5 w-5 text-primary" />
-                      <CardTitle className="text-lg">Target Settings</CardTitle>
+                      <CardTitle className="text-lg">Targets Overview</CardTitle>
                     </div>
                     {isTargetSectionOpen ? (
                       <ChevronUp className="h-5 w-5" />
@@ -239,42 +268,12 @@ const DataEntryForm = () => {
                     )}
                   </div>
                   <CardDescription>
-                    Configure monthly and daily production targets
+                    Overview of monthly and daily production targets
                   </CardDescription>
                 </CardHeader>
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <CardContent className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Total Monthly Target</Label>
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          value={totalMonthlyTarget}
-                          readOnly
-                          className="pr-16 bg-muted/30"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                          Meter
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Total Target per Day</Label>
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          value={totalTargetPerDay}
-                          readOnly
-                          className="pr-16 bg-muted/30"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                          Meter
-                        </span>
-                      </div>
-                    </div>
-                  </div>
                   <div className="space-y-3">
                     <Label className="text-sm font-medium">Individual Department Targets</Label>
                     <div className="grid gap-2">
@@ -333,15 +332,14 @@ const DataEntryForm = () => {
                       {/* Input Fields Row */}
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                         <div className="space-y-2">
-                          <Label htmlFor={`monthly-target-${item.id}`}>Monthly Target</Label>
+                          <Label>Average Daily Target</Label>
                           <div className="relative">
                             <Input
-                              id={`monthly-target-${item.id}`}
                               type="number"
                               placeholder="0"
-                              value={item.monthlyTarget}
-                              onChange={(e) => updateItem(item.id, 'monthlyTarget', parseFloat(e.target.value) || 0)}
-                              className="pr-16"
+                              value={Math.round(item.monthlyTarget / (new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate()))}
+                              readOnly
+                              className="pr-16 bg-muted/30"
                               required
                             />
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -366,51 +364,72 @@ const DataEntryForm = () => {
                             </span>
                           </div>
                         </div>
-                        <div className="space-y-2 lg:col-span-2">
+                        <div className="space-y-2">
                           <Label htmlFor={`remarks-${item.id}`}>Remarks</Label>
-                          <Textarea
+                          <Input
                             id={`remarks-${item.id}`}
+                            type="text"
                             placeholder="Optional remarks..."
                             value={item.remarks}
                             onChange={(e) => updateItem(item.id, 'remarks', e.target.value)}
-                            className="resize-none"
-                            rows={1}
+                            className="pr-3"
                           />
                         </div>
                       </div>
 
-                      {/* Metrics Display */}
-                      {item.ftd && (
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 p-4 bg-muted/20 rounded-lg border border-border/50">
-                          <div className="text-center space-y-1">
-                            <p className="metric-display">MTD</p>
-                            <p className="text-lg font-semibold">
-                              {metrics.mtd.toLocaleString()}
-                            </p>
-                          </div>
-                          <div className="text-center space-y-1">
-                            <p className="metric-display">Running Avg/Day</p>
-                            <p className="text-lg font-semibold">
-                              {metrics.runningAvgPerDay.toLocaleString()}
-                            </p>
-                          </div>
-                          <div className="text-center space-y-1">
-                            <p className="metric-display">Projected Monthly</p>
-                            <div className="flex items-center justify-center space-x-1">
-                              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                              <p className="text-lg font-semibold">
-                                {metrics.projectedMonthly.toLocaleString()}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-center space-y-1">
-                            <p className="metric-display">Daily Achievement</p>
-                            <span className={cn("text-sm font-semibold px-2 py-1 rounded", getAchievementStyle(metrics.achievementPercent))}>
-                              {metrics.achievementPercent}%
-                            </span>
-                          </div>
-                        </div>
-                      )}
+                      {/* Metrics Display - collapsible */}
+                      <div className="mt-2">
+                        <Collapsible
+                          open={!!openMetrics[item.id]}
+                          onOpenChange={(open) => setOpenMetrics((prev) => ({ ...prev, [item.id]: open }))}
+                        >
+                          <CollapsibleTrigger asChild>
+                            <Button variant="outline" size="sm" className="flex items-center">
+                              <span className="mr-2">Metrics</span>
+                              {openMetrics[item.id] ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            {item.ftd ? (
+                              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 p-4 mt-3 bg-muted/20 rounded-lg border border-border/50">
+                                <div className="text-center space-y-1">
+                                  <p className="metric-display">MTD</p>
+                                  <p className="text-lg font-semibold">
+                                    {metrics.mtd.toLocaleString()}
+                                  </p>
+                                </div>
+                                <div className="text-center space-y-1">
+                                  <p className="metric-display">Running Avg/Day</p>
+                                  <p className="text-lg font-semibold">
+                                    {metrics.runningAvgPerDay.toLocaleString()}
+                                  </p>
+                                </div>
+                                <div className="text-center space-y-1">
+                                  <p className="metric-display">Projected Monthly</p>
+                                  <div className="flex items-center justify-center space-x-1">
+                                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                                    <p className="text-lg font-semibold">
+                                      {metrics.projectedMonthly.toLocaleString()}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-center space-y-1">
+                                  <p className="metric-display">Daily Achievement</p>
+                                  <span className={cn("text-sm font-semibold px-2 py-1 rounded", getAchievementStyle(metrics.achievementPercent))}>
+                                    {metrics.achievementPercent}%
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-sm text-muted-foreground p-3 mt-2">Enter FTD to see metrics.</div>
+                            )}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </div>
                     </div>
                   );
                 })}
