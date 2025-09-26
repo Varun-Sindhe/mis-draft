@@ -85,6 +85,39 @@ const DataEntryForm = () => {
       monthlyTarget: 112000,
       previousMTD: 59000,
     },
+    // BSR section
+    {
+      id: "bsr-solid",
+      name: "BSR production- Solid",
+      ftd: "",
+      remarks: "",
+      monthlyTarget: 0,
+      previousMTD: 0,
+    },
+    {
+      id: "bsr-print",
+      name: "BSR production- Print",
+      ftd: "",
+      remarks: "",
+      monthlyTarget: 0,
+      previousMTD: 0,
+    },
+    {
+      id: "bsr-yarn-dyed",
+      name: "BSR production- Yarn Dyed",
+      ftd: "",
+      remarks: "",
+      monthlyTarget: 0,
+      previousMTD: 0,
+    },
+    {
+      id: "bsr-rfd-wht",
+      name: "BSR production- RFD/WHT",
+      ftd: "",
+      remarks: "",
+      monthlyTarget: 0,
+      previousMTD: 0,
+    },
   ]);
 
   // Load saved monthly targets for 2025 from localStorage and apply by month
@@ -145,6 +178,34 @@ const DataEntryForm = () => {
       targetPerDay: Math.round(targetPerDay),
     };
   }, [selectedDate]);
+
+  // Section helpers
+  const getSectionItems = useCallback((prefix: "input" | "bsr") => {
+    return productionItems.filter(p => p.id.startsWith(prefix));
+  }, [productionItems]);
+
+  const calculateSectionTotals = useCallback((section: "input" | "bsr") => {
+    const items = getSectionItems(section);
+    const ftdSum = items.reduce((acc, it) => acc + (parseFloat(it.ftd) || 0), 0);
+    const monthlyTargetSum = items.reduce((acc, it) => acc + (it.monthlyTarget || 0), 0);
+    const previousMTDSum = items.reduce((acc, it) => acc + (it.previousMTD || 0), 0);
+    const currentDay = selectedDate.getDate();
+    const daysInMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate();
+    const mtd = previousMTDSum + ftdSum;
+    const runningAvgPerDay = mtd / (currentDay || 1);
+    const projectedMonthly = runningAvgPerDay * daysInMonth;
+    const targetPerDay = monthlyTargetSum / daysInMonth;
+    const achievementPercent = targetPerDay > 0 ? (ftdSum / targetPerDay) * 100 : 0;
+    return {
+      ftdSum: Math.round(ftdSum),
+      monthlyTargetSum: Math.round(monthlyTargetSum),
+      mtd: Math.round(mtd),
+      runningAvgPerDay: Math.round(runningAvgPerDay),
+      projectedMonthly: Math.round(projectedMonthly),
+      achievementPercent: Math.round(achievementPercent),
+      targetPerDay: Math.round(targetPerDay),
+    };
+  }, [getSectionItems, selectedDate]);
 
   // Update item data
   const updateItem = (id: string, field: keyof ProductionItem, value: string | number) => {
@@ -248,7 +309,8 @@ const DataEntryForm = () => {
         <div className="space-y-6">
           {/* Section Title */}
           <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold text-foreground">Input Department - Daily Production Entry</h2>
+            <h2 className="text-2xl font-bold text-foreground">Input - Daily Production Entry</h2>
+            <p className="text-sm text-muted-foreground">Sections: input and bsr</p>
           </div>
 
           {/* Target Settings Section */}
@@ -304,20 +366,20 @@ const DataEntryForm = () => {
             </Collapsible>
           </Card>
 
-          {/* Data Entry Grid */}
+          {/* Data Entry Grid - Input Section */}
           <Card className="industrial-card">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Calculator className="h-5 w-5 text-primary" />
-                <span>Production Data Entry</span>
+                <span>input section</span>
               </CardTitle>
               <CardDescription>
-                Enter daily production figures and remarks for each input department item
+                Enter daily production figures for input subdepartments
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {productionItems.map((item) => {
+                {getSectionItems("input").map((item) => {
                   const metrics = calculateMetrics(item);
                   
                   return (
@@ -433,6 +495,149 @@ const DataEntryForm = () => {
                     </div>
                   );
                 })}
+                {/* Input Total Row */}
+                {(() => {
+                  const t = calculateSectionTotals("input");
+                  return (
+                    <div className="data-grid">
+                      <div className="col-span-full">
+                        <Label className="text-base font-semibold text-foreground">Input- Total</Label>
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <div className="space-y-1">
+                          <p className="metric-display">Monthly Target Sum</p>
+                          <p className="text-lg font-semibold">{t.monthlyTargetSum.toLocaleString()}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="metric-display">FTD Sum</p>
+                          <p className="text-lg font-semibold">{t.ftdSum.toLocaleString()}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="metric-display">MTD</p>
+                          <p className="text-lg font-semibold">{t.mtd.toLocaleString()}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="metric-display">Daily Achievement</p>
+                          <span className={cn("text-sm font-semibold px-2 py-1 rounded", getAchievementStyle(t.achievementPercent))}>{t.achievementPercent}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Data Entry Grid - BSR Section */}
+          <Card className="industrial-card">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Calculator className="h-5 w-5 text-primary" />
+                <span>bsr section</span>
+              </CardTitle>
+              <CardDescription>
+                Enter daily production figures for bsr subdepartments
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {getSectionItems("bsr").map((item) => {
+                  const metrics = calculateMetrics(item);
+                  return (
+                    <div key={item.id} className="data-grid">
+                      <div className="col-span-full">
+                        <Label className="text-base font-semibold text-foreground">{item.name}</Label>
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <div className="space-y-2">
+                          <Label>Average Daily Target</Label>
+                          <div className="relative">
+                            <Input type="number" placeholder="0" value={Math.round(item.monthlyTarget / (new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate()))} readOnly className="pr-16 bg-muted/30" required />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">Meter</span>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`ftd-${item.id}`}>FTD (Figure to Date)</Label>
+                          <div className="relative">
+                            <Input id={`ftd-${item.id}`} type="number" placeholder="0" value={item.ftd} onChange={(e) => updateItem(item.id, 'ftd', e.target.value)} className="pr-16" required />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">Meter</span>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`remarks-${item.id}`}>Remarks</Label>
+                          <Input id={`remarks-${item.id}`} type="text" placeholder="Optional remarks..." value={item.remarks} onChange={(e) => updateItem(item.id, 'remarks', e.target.value)} className="pr-3" />
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <Collapsible open={!!openMetrics[item.id]} onOpenChange={(open) => setOpenMetrics((prev) => ({ ...prev, [item.id]: open }))}>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="outline" size="sm" className="flex items-center">
+                              <span className="mr-2">Metrics</span>
+                              {openMetrics[item.id] ? (<ChevronUp className="h-4 w-4" />) : (<ChevronDown className="h-4 w-4" />)}
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            {item.ftd ? (
+                              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 p-4 mt-3 bg-muted/20 rounded-lg border border-border/50">
+                                <div className="text-center space-y-1">
+                                  <p className="metric-display">MTD</p>
+                                  <p className="text-lg font-semibold">{metrics.mtd.toLocaleString()}</p>
+                                </div>
+                                <div className="text-center space-y-1">
+                                  <p className="metric-display">Running Avg/Day</p>
+                                  <p className="text-lg font-semibold">{metrics.runningAvgPerDay.toLocaleString()}</p>
+                                </div>
+                                <div className="text-center space-y-1">
+                                  <p className="metric-display">Projected Monthly</p>
+                                  <div className="flex items-center justify-center space-x-1">
+                                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                                    <p className="text-lg font-semibold">{metrics.projectedMonthly.toLocaleString()}</p>
+                                  </div>
+                                </div>
+                                <div className="text-center space-y-1">
+                                  <p className="metric-display">Daily Achievement</p>
+                                  <span className={cn("text-sm font-semibold px-2 py-1 rounded", getAchievementStyle(metrics.achievementPercent))}>{metrics.achievementPercent}%</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-sm text-muted-foreground p-3 mt-2">Enter FTD to see metrics.</div>
+                            )}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* BSR Total Row */}
+                {(() => {
+                  const t = calculateSectionTotals("bsr");
+                  return (
+                    <div className="data-grid">
+                      <div className="col-span-full">
+                        <Label className="text-base font-semibold text-foreground">BSR production- Total</Label>
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <div className="space-y-1">
+                          <p className="metric-display">Monthly Target Sum</p>
+                          <p className="text-lg font-semibold">{t.monthlyTargetSum.toLocaleString()}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="metric-display">FTD Sum</p>
+                          <p className="text-lg font-semibold">{t.ftdSum.toLocaleString()}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="metric-display">MTD</p>
+                          <p className="text-lg font-semibold">{t.mtd.toLocaleString()}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="metric-display">Daily Achievement</p>
+                          <span className={cn("text-sm font-semibold px-2 py-1 rounded", getAchievementStyle(t.achievementPercent))}>{t.achievementPercent}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </CardContent>
           </Card>

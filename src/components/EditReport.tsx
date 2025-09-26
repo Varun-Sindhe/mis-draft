@@ -17,6 +17,11 @@ const EditReport = () => {
       { id: "input-print", name: "Input-Print" },
       { id: "input-yarn-dyed", name: "Input-Yarn Dyed" },
       { id: "input-rfd-wht", name: "Input-RFD/WHT" },
+      // BSR section
+      { id: "bsr-solid", name: "BSR production- Solid" },
+      { id: "bsr-print", name: "BSR production- Print" },
+      { id: "bsr-yarn-dyed", name: "BSR production- Yarn Dyed" },
+      { id: "bsr-rfd-wht", name: "BSR production- RFD/WHT" },
     ],
     []
   );
