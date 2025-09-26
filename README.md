@@ -6,7 +6,9 @@
 
 ### [ The above link redirects you to display project using 'Lovable',
 if you want a VS code environment online : 
-**URL**: https://symmetrical-space-acorn-r4gwp7pg745vhx995.github.dev
+**URL**: https://github.dev/Varun-Sindhe/mis-draft
+
+then open the code with codespace (watch github.dev to codespace one minute turorial) to run online without downloading project.
 
 wait until files load, open terminal and build using terminal (run both commands one after another) -
 
@@ -14,7 +16,7 @@ npm run build
 
 npm run preview
 
-if you want to run locally, before these two commands type/copy paste -
+if you want to run locally on your windows device, before these two commands type/copy paste -
 npm install
 
 after that you can run the two commands given above]
